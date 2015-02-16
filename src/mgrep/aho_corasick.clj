@@ -15,100 +15,93 @@
 
 ;; trie definition and construction
 
-(defrecord Trie [q delta final value])
+; Trie definition
+;   qs    - set of states represented as strings
+;   delta : qs x sigma -> qs
+;         - transition function (partial function)
+;   final - set of final states, subset of q
+(defrecord Trie [qs delta final])
 
-(def trie-root 0)
+(def trie-root "")
 
-(def trie-empty (Trie. #{trie-root} {} #{} {trie-root ""}))
+(def trie-empty (Trie. #{trie-root} {} #{}))
 
 (defn trie-add
   ([trie word]
     (trie-add trie trie-root word))
-  ([trie cur-node word]
+  ([trie q-cur word]
     (if (empty? word)
-      (Trie. (:q trie) (:delta trie) (conj (:final trie) cur-node) (:value trie))
-      (let [max-node (apply max (:q trie))
-            succ-node (or (get-in (:delta trie) [cur-node (first word)])
-                          (inc max-node))
-            succ-value (str (get (:value trie) cur-node) (first word))
-            new-q (conj (:q trie) succ-node)
-            new-delta (assoc-in (:delta trie) [cur-node (first word)] succ-node)
-            new-value (assoc (:value trie) succ-node succ-value)
-            new-trie (Trie. new-q new-delta (:final trie) new-value)]
-        (recur new-trie succ-node (next word))))))
+      (Trie. (:qs trie) (:delta trie) (conj (:final trie) q-cur))
+      (let [q-succ (str q-cur (first word))
+            qs-new (conj (:qs trie) q-succ)
+            delta-new (assoc-in (:delta trie) [q-cur (first word)] q-succ)
+            trie-new (Trie. qs-new delta-new (:final trie))]
+        (recur trie-new q-succ (next word))))))
 
 (defn strings->trie [words]
   (reduce trie-add trie-empty words))
 
 (defn trie-walk
-  "Walks the trie. Returns either the final node or nil if path for given word doesn't exist."
+  "Walks the trie. Returns either the finishing state or nil if path for given word doesn't exist."
   [trie word]
-  (let [step (fn [node chr]
-               (if (nil? node)
+  (let [step (fn [q chr]
+               (if (nil? q)
                  nil
-                 (get-in (:delta trie) [node chr])))]
+                 (get-in (:delta trie) [q chr])))]
     (reduce step trie-root word)))
 
 (defn trie-contains? [trie word]
-  (let [node (trie-walk trie word)]
-    (and (not (nil? node))
-         (contains? (:final trie) node))))
+  (let [q (trie-walk trie word)]
+    (and (not (nil? q))
+         (contains? (:final trie) q))))
 
 
 ;; actree is created by adding suffix links into a trie
 
+; TODO add deltad (dictionary transition function)
+
 ; Aho-Corasick tree is also a trie
-(defrecord ACTree [q deltap deltam final value])
+;   qs     - set of states
+;   deltap : qs x sigma -> qs
+;          - positive transition function (partial function)
+;   deltam : qs -> qs
+;          - suffix-node transition function (partial function)
+;   final  - set of final states
+(defrecord ACTree [qs deltap deltam final])
 
 (defn trie->actree [trie]
-  (defn add-suffix-link [actree node]
-    (let [node-value (get (:value trie) node)
-          value-suffixes (suffixes node-value)
-          suffix-node (or (take-first #(trie-contains? trie %) value-suffixes)
-                          nil)
-          new-deltam (assoc (:deltam actree) node suffix-node)]
-    (ACTree. (:q actree) (:deltap actree) new-deltam (:final actree) (:value actree))))
-  (let [initial-actree (ACTree. (:q trie) (:delta trie) {} (:final trie) (:value trie))]
-    (reduce add-suffix-link initial-actree (:q trie))))
+  (defn add-suffix-link [actree q]
+    (let [q-suffix (or (take-first #(trie-contains? trie %) (suffixes q))
+                       nil)
+          deltam-new (assoc (:deltam actree) q q-suffix)]
+    (ACTree. (:qs actree) (:deltap actree) deltam-new (:final actree))))
+  (let [actree-initial (ACTree. (:qs trie) (:delta trie) {} (:final trie))]
+    (reduce add-suffix-link actree-initial (:qs trie))))
 
-(defn actree-get-suffix-nodes [actree node]
-  (if (nil? node)
+(defn strings->actree [words]
+  (trie->actree (strings->trie words)))
+
+(defn actree-get-suffix-qs [actree q]
+  (if (or (nil? q) (not (contains? (:qs actree) q)))
     '()
-    (cons node (actree-get-suffix-nodes actree (get (:deltam actree) node)))))
+    (cons q (actree-get-suffix-qs actree (get (:deltam actree) q)))))
 
-(defn actree-words-for-node [actree node]
-  (let [suffix-nodes (actree-get-suffix-nodes actree node)
-        dictionary-nodes (filter #(contains? (:final actree) %) suffix-nodes)
-        values (map #((:value actree) %) dictionary-nodes)]
-    values))
+(defn actree-words-for-q [actree q]
+  (let [suffix-qs (actree-get-suffix-qs actree q)
+        dictionary-qs (filter #(contains? (:final actree) %) suffix-qs)]
+    dictionary-qs))
 
 (defn actree-walk
   ([actree input]
-    (actree-walk trie-root [] input))
-  ([actree cur-node found input]
-   (if (empty? input)
-     found
-     (let [succ-node (get-in (:deltap actree) [cur-node (first input)])
-           suffix-node (get (:deltam actree) cur-node)
-           consume-char? (or (not (nil? succ-node))
-                             (nil? suffix-node))
-           node-new (or succ-node suffix-node trie-root)
-           found-new (into found ()) ; TODO
-           input-new (if consume-char? (next input) input)]
-       (recur actree node-new found-new input-new)))))
-
-(let [act (trie->actree (strings->trie ["b" "ab"]))]
-  (actree-get-suffix-nodes act 3))
-
-
-
-
-
-
-
-
-
-
-
-
-
+    (actree-walk actree trie-root [] input))
+  ([actree q found input]
+   (let [found-new (into found (actree-words-for-q actree q))]
+     (if (empty? input)
+       found-new
+       (let [q-succ (get-in (:deltap actree) [q (first input)])
+             q-suffix (get (:deltam actree) q)
+             q-new (or q-succ q-suffix trie-root)
+             consume-char? (or (not (nil? q-succ))
+                               (= q q-new trie-root))
+             input-new (if consume-char? (next input) input)]
+         (recur actree q-new found-new input-new))))))
