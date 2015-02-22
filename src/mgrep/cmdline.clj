@@ -50,7 +50,7 @@
 (defn -main [& argv]
   (do
     (let [{:keys [options errors summary arguments]} (clojure.tools.cli/parse-opts argv cli-options)
-          help (get options :help)]
+          {:keys [help pattern-file]} options]
       (cond help
               (println (usage summary))
             errors
@@ -58,8 +58,7 @@
                   (println (clojure.string/join "\n" (map #(str "* " %) errors))))
             :else
               (try
-                (let [patterns-file (get options :pattern-file)
-                      patterns (clojure.string/split-lines (slurp patterns-file))]
+                (let [patterns (clojure.string/split-lines (slurp pattern-file))]
                   (search-for-patterns patterns arguments))
                 (catch java.io.IOException e
                   (binding [*out* *err*]

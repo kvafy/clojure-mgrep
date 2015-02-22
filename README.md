@@ -9,3 +9,4 @@ Mgrep is a Clojure utility designed to search for large ammounts of literal patt
 
 # Requirements
 * Clojure 1.6 or compatible
+* Leiningen 2.5 or compatible
