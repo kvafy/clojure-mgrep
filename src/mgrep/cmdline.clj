@@ -18,13 +18,10 @@
   (try
     (with-open [reader (clojure.java.io/reader filename)]
       (doseq [match (ac/actree-walk actree (lazy-reader reader))]
-        (printf "%s: %s\n" filename match)
-        (flush)))
+        (printf "%s: %s\n" filename match)))
     (catch java.io.IOException e
       (binding [*out* *err*]
-        (do
-          (printf "Error reading file '%s': %s.\n" filename (.toString e))
-          (flush))))))
+          (printf "Error reading file '%s': %s.\n" filename (.toString e))))))
 
 (defn search-for-patterns [patterns filenames]
   (let [actree (ac/strings->actree patterns)]
@@ -51,23 +48,21 @@
     :default false]])
 
 (defn -main [& argv]
-  (let [options (clojure.tools.cli/parse-opts argv cli-options)
-        help (get-in options [:options :help])
-        options-summary (get-in options [:summary])
-        cli-errors (get-in options [:errors])]
-    (cond help
-            (println (usage options-summary))
-          cli-errors
-            (do (println "Following errors encountered while processing the parameters:")
-                (println (clojure.string/join "\n" (map #(str "* " %) cli-errors))))
-          :else
-            (try
-              (let [patterns-file (get-in options [:options :pattern-file])
-                    patterns (clojure.string/split-lines (slurp patterns-file))
-                    files (get-in options [:arguments])]
-                (search-for-patterns patterns files))
-              (catch java.io.IOException e
-                (binding [*out* *err*]
-                  (do
-                    (printf "Encountered the following error: %s." (.toString e))
-                    (flush))))))))
+  (do
+    (let [{:keys [options errors summary arguments]} (clojure.tools.cli/parse-opts argv cli-options)
+          help (get options :help)]
+      (cond help
+              (println (usage summary))
+            errors
+              (do (println "Following errors encountered while processing the parameters:")
+                  (println (clojure.string/join "\n" (map #(str "* " %) errors))))
+            :else
+              (try
+                (let [patterns-file (get options :pattern-file)
+                      patterns (clojure.string/split-lines (slurp patterns-file))]
+                  (search-for-patterns patterns arguments))
+                (catch java.io.IOException e
+                  (binding [*out* *err*]
+                      (printf "Encountered the following error: %s." (.toString e)))))))
+    (.flush *out*)
+    (.flush *err*)))
