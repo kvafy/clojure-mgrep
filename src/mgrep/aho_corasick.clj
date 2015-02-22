@@ -58,10 +58,11 @@
 
 ;; actree is created by adding suffix links into a trie
 
-; TODO add deltad (dictionary transition function)
+; TODO add deltad (dictionary transition function, partial function)
+; TODO utilize "loop" construct instead of one-shot functions OR make them "private"
 
-; Aho-Corasick tree is also a trie
-;   qs     - set of states
+; Aho-Corasick tree (is also a trie)
+;   qs     - set of states represented as strings
 ;   deltap : qs x sigma -> qs
 ;          - positive transition function (partial function)
 ;   deltam : qs -> qs
@@ -91,9 +92,11 @@
         dictionary-qs (filter #(contains? (:final actree) %) suffix-qs)]
     dictionary-qs))
 
-(defn actree-walk
+
+;; Eager Aho-Corasick tree walk.
+(defn actree-walk-eager
   ([actree input]
-    (actree-walk actree trie-root [] input))
+    (actree-walk-eager actree trie-root [] input))
   ([actree q found input]
    (let [found-new (into found (actree-words-for-q actree q))]
      (if (empty? input)
@@ -105,3 +108,23 @@
                                (= q q-new trie-root))
              input-new (if consume-char? (next input) input)]
          (recur actree q-new found-new input-new))))))
+
+(if (not-empty []) true false)
+
+;; Lazy Aho-Corasick tree walk.
+(defn actree-walk
+  ([actree input]
+    (actree-walk actree trie-root input))
+  ([actree q input]
+   (let [q-words (actree-words-for-q actree q)]
+     (if (empty? input)
+       q-words
+       (let [q-succ (get-in (:deltap actree) [q (first input)])
+             q-suffix (get (:deltam actree) q)
+             q-new (or q-succ q-suffix trie-root)
+             consume-char? (or (not (nil? q-succ))
+                               (= q q-new trie-root))
+             input-new (if consume-char? (next input) input)]
+         (if (empty? q-words)
+           (recur actree q-new input-new)
+           (lazy-cat q-words (lazy-seq (actree-walk actree q-new input-new)))))))))

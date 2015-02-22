@@ -1,0 +1,21 @@
+In functional programming, a monad is a structure that represents computations defined as sequences of steps: a type with a monad structure defines what it means to chain operations, or nest functions of that type together. This allows the programmer to build pipelines that process data in steps, in which each action is decorated with additional processing rules provided by the monad.[1] As such, monads have been described as "programmable semicolons"; a semicolon is the operator used to chain together individual statements in many imperative programming languages,[1] thus the expression implies that extra code will be executed between the statements in the pipeline. Monads have also been explained with a physical metaphor as assembly lines, where a conveyor belt transports data between functional units that transform it one step at a time.[2] They can also be seen as a functional design pattern to build generic types.[3]
+
+Purely functional programs can use monads to structure procedures that include sequenced operations like those found in structured programming.[4][5] Many common programming concepts can be described in terms of a monad structure, including side effects such as input/output, variable assignment, exception handling, parsing, nondeterminism, concurrency, and continuations. This allows these concepts to be defined in a purely functional manner, without major extensions to the language's semantics. Languages like Haskell provide monads in the standard core, allowing programmers to reuse large parts of their formal definition and apply in many different libraries the same interfaces for combining functions.[6]
+
+Formally, a monad consists of a type constructor M and two operations, bind and return (where return is often also called unit):
+
+The return operation takes a value from a plain type and puts it into a monadic container using the constructor, creating a monadic value.
+The bind operation takes as its arguments a monadic value and a function from a plain type to a monadic value, and returns a new monadic value.
+The operations must fulfill several properties to allow the correct composition of monadic functions (i.e. functions that use values from the monad as their arguments or return value). Because a monad can insert additional operations around a program's domain logic, monads can be considered a sort of aspect-oriented programming.[7] The domain logic can be defined by the application programmer in the pipeline, while required aside bookkeeping operations can be handled by a pre-defined monad built in advance.
+
+The name and concept comes from category theory, where monads are one particular kind of functor, a mapping between categories; although the term monad in functional programming contexts is usually used with a meaning corresponding to that of the term strong monad in category theory.[8]
+
+
+The concept of monad programming appeared in the 1980s in the programming language Opal even though it was called "commands" and never formally specified.[citation needed]
+
+Eugenio Moggi first described the general use of monads to structure programs in 1991.[8] Several people built on his work, including programming language researchers Philip Wadler and Simon Peyton Jones (both of whom were involved in the specification of Haskell). Early versions of Haskell used a problematic "lazy list" model for I/O, and Haskell 1.3 introduced monads as a more flexible way to combine I/O with lazy evaluation.
+
+In addition to I/O, programming language researchers and Haskell library designers have successfully applied monads to topics including parsers and programming language interpreters. The concept of monads along with the Haskell do-notation for them has also been generalized to form applicative functors and arrows.
+
+For a long time, Haskell and its derivatives have been the only major users of monads in programming. There also exist formulations in Scheme, Perl, Python, Racket, Clojure and Scala, and monads have been an option in the design of a new ML standard. Recently F# has included a feature called computation expressions or workflows, which are an attempt to introduce monadic constructs within a syntax more palatable to those programmers whose only prior experience has been with imperative languages.[9]
+
