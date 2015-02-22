@@ -4,6 +4,7 @@ Mgrep is a Clojure utility designed to search for large ammounts of literal patt
 
 # Usage
 `$ lein uberjar`
+
 `$ java -jar target/mgrep-<version>-standalone.jar -p <pattern-file> <input-files>`
 
 
