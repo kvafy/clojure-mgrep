@@ -20,10 +20,10 @@
       (doseq [match (ac/actree-walk actree (lazy-reader reader))]
         (printf "%s: %s\n" filename match)
         (flush)))
-    (catch java.io.FileNotFoundException e
+    (catch java.io.IOException e
       (binding [*out* *err*]
         (do
-          (printf "Warning: file '%s' not found.\n" filename)
+          (printf "Error reading file '%s': %s.\n" filename (.toString e))
           (flush))))))
 
 (defn search-for-patterns [patterns filenames]
@@ -61,7 +61,13 @@
             (do (println "Following errors encountered while processing the parameters:")
                 (println (clojure.string/join "\n" (map #(str "* " %) cli-errors))))
           :else
-            (let [patterns-file (get-in options [:options :pattern-file])
-                  patterns (clojure.string/split-lines (slurp patterns-file))
-                  files (get-in options [:arguments])]
-              (search-for-patterns patterns files)))))
+            (try
+              (let [patterns-file (get-in options [:options :pattern-file])
+                    patterns (clojure.string/split-lines (slurp patterns-file))
+                    files (get-in options [:arguments])]
+                (search-for-patterns patterns files))
+              (catch java.io.IOException e
+                (binding [*out* *err*]
+                  (do
+                    (printf "Encountered the following error: %s." (.toString e))
+                    (flush))))))))
